@@ -17,7 +17,7 @@ public abstract class MaterialBiblioteca {
 
     public abstract String descripcion();
     public abstract int calcularDiasPrestados();
-
+ 
     public String getTitulo() {
         return titulo;
     }
