@@ -1,7 +1,7 @@
 public class Libro extends MaterialBiblioteca{
-    public String autor;
-    public int numeroPaginas;
-    public String isbn;
+    private String autor;
+    private int numeroPaginas;
+    private String isbn;
 
     public Libro(String titulo, String codigo, Estado estado, int diasMaximo, NivelComplejidad nivelComplejidad, String referenciaImagen, String autor, int numeroPaginas, String ISBN) {
         super(titulo, codigo, estado, diasMaximo, nivelComplejidad, referenciaImagen);
@@ -22,7 +22,8 @@ public class Libro extends MaterialBiblioteca{
 
     @Override
     public int calcularDiasPrestados() {
-        return diasMaximo+nivelComplejidad.getDiasAdicionales();
+        int dias=diasMaximo;
+        return dias+nivelComplejidad.getDiasAdicionales();
     }
 
     public String getAutor() {

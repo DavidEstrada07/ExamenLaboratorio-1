@@ -12,13 +12,22 @@ public class Revista extends MaterialBiblioteca{
     public String descripcion() {
         return "Libro: "+titulo+
                 "Estado: "+estado+
+                "Periocidad: "+periocidad+
                 "nivel de Complejidad: "+nivelComplejidad+
-                "Codigo: "+codigo;
+                "Codigo: "+codigo+
+                "Numero de Edicion: "+numeroEdicion;
     }
 
     @Override
     public int calcularDiasPrestados() {
-        return diasMaximo+nivelComplejidad.getDiasAdicionales();
+        int dias = diasMaximo;
+        if (periocidad.equals(Periocidad.MENSUAL)){
+            dias++;
+        }
+        if (periocidad.equals(Periocidad.ANUAL)){
+            dias+=2;
+        }
+        return dias+nivelComplejidad.getDiasAdicionales();
     }
 
     public int getNumeroEdicion() {
