@@ -42,5 +42,5 @@ public abstract class MaterialBiblioteca {
         return referenciaImagen;
     }
 
-    
+
 }
