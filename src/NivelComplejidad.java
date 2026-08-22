@@ -18,5 +18,15 @@ public enum NivelComplejidad {
         } return false;
     }
 
+    public int getOrdenComplejidad() {
+        return ordenComplejidad;
+    }
 
+    public int getDiasAdicionales() {
+        return diasAdicionales;
+    }
+
+    public String getNivelComplejidad() {
+        return nivelComplejidad;
+    }
 }
