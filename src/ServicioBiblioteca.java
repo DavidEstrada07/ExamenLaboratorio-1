@@ -1,502 +1,596 @@
-package com.mycompany.examenlaboratorio_1_main.servicio;//Jhoveth Moncada
+package com.mycompany.examenlaboratorio_1_main;
 
-import com.mycompany.examenlaboratorio_1_main.*;
-
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ServicioBiblioteca {
 
-   
+    private final List<Material> materiales;
+    private final List<Usuario> usuarios;
+    private final Map<String, Deque<Usuario>> reservas;
+    private final List<RegistroPrestamo> historial;
+    private final Map<String, Integer> cantidadPrestamos;
+    private final Map<String, Usuario> prestamosActuales;
+    private final Map<String, Integer> penalizaciones;
 
-    private ArrayList<MaterialBiblioteca> materiales;
-    private ArrayList<Usuario> usuarios;
-    private ArrayList<Prestamo> prestamos;
-
-    
+    private static final int LIMITE_PRESTAMOS = 3;
 
     public ServicioBiblioteca() {
         materiales = new ArrayList<>();
         usuarios = new ArrayList<>();
-        prestamos = new ArrayList<>();
+        reservas = new HashMap<>();
+        historial = new ArrayList<>();
+        cantidadPrestamos = new HashMap<>();
+        prestamosActuales = new HashMap<>();
+        penalizaciones = new HashMap<>();
     }
 
-    
-
-    public void agregarMaterial(MaterialBiblioteca material) {
+    public void agregarMaterial(Material material) {
         if (material == null) {
-            return;
+            throw new BibliotecaException("El material no puede ser null.");
+        }
+
+        if (buscarPorCodigo(material.getCodigo()) != null) {
+            throw new BibliotecaException(
+                    "Ya existe un material con el codigo: "
+                    + material.getCodigo()
+            );
         }
 
         materiales.add(material);
+        reservas.put(material.getCodigo(), new ArrayDeque<>());
+        cantidadPrestamos.put(material.getCodigo(), 0);
     }
-
-    
 
     public void agregarUsuario(Usuario usuario) {
         if (usuario == null) {
-            return;
+            throw new BibliotecaException("El usuario no puede ser null.");
+        }
+
+        if (buscarUsuario(usuario.getCodigo()) != null) {
+            throw new BibliotecaException(
+                    "Ya existe un usuario con el codigo: "
+                    + usuario.getCodigo()
+            );
         }
 
         usuarios.add(usuario);
+        penalizaciones.put(usuario.getCodigo(), 0);
     }
 
-    
-
-    public Prestamo prestarMaterial(
-            Usuario usuario,
-            MaterialBiblioteca material
-    ) throws BibliotecaException {
-
-        if (usuario == null) {
-            throw new BibliotecaException(
-                    "El usuario no puede ser nulo."
-            );
-        }
-
-        if (material == null) {
-            throw new BibliotecaException(
-                    "El material no puede ser nulo."
-            );
-        }
-
-      
-
-        if (usuario.estaPenalizado()) {
-            throw new BibliotecaException(
-                    "El usuario " + usuario.getNombre()
-                    + " está penalizado hasta "
-                    + usuario.getFinPenalizacion() + "."
-            );
-        }
-
-       
-
-        if (usuario.getMaterialesPrestados().size()
-                >= usuario.getLimitePrestamos()) {
-
-            throw new LimitePrestamosExcedidoException(
-                    usuario.getNombre(),
-                    usuario.getLimitePrestamos()
-            );
-        }
-
-       
-
-        if (material.getNivelComplejidad().requiereAutorizacion()
-                && !usuario.tieneAutorizacionEspecial()) {
-
-            throw new AutorizacionRequeridaException(
-                    usuario.getNombre(),
-                    material.getTitulo()
-            );
-        }
-
-       
-
-        if (!(material instanceof Prestable)) {
-            throw new BibliotecaException(
-                    "El material \"" + material.getTitulo()
-                    + "\" no puede ser prestado."
-            );
-        }
-
-        Prestable prestable = (Prestable) material;
-
-        
-
-        if (!prestable.estaDisponible()) {
-            throw new MaterialYaPrestadoException(
-                    material.getTitulo()
-            );
-        }
-
-        
-
-        prestable.prestar(usuario);
-
-        int diasPrestamo = material.calcularDiasPrestados();
-
-        Prestamo prestamo = new Prestamo(
-                material,
-                usuario,
-                diasPrestamo
-        );
-
-        // Guardar en historial general
-        prestamos.add(prestamo);
-
-        // Guardar en historial del usuario
-        usuario.registrarPrestamo(prestamo);
-
-        // Agregar material a préstamos actuales
-        usuario.getMaterialesPrestados().add(material);
-
-        return prestamo;
-    }
-
-
-    public void devolverMaterial(
-            Usuario usuario,
-            MaterialBiblioteca material
-    ) throws BibliotecaException {
-
-        if (usuario == null || material == null) {
-            throw new BibliotecaException(
-                    "El usuario y el material son obligatorios."
-            );
-        }
-
-    
-
-        Prestamo prestamoEncontrado = null;
-
-        for (Prestamo prestamo : prestamos) {
-
-            if (prestamo.getUsuario() == usuario
-                    && prestamo.getMaterial() == material
-                    && prestamo.getFechaDevolucionReal() == null) {
-
-                prestamoEncontrado = prestamo;
-                break;
-            }
-        }
-
-        if (prestamoEncontrado == null) {
-            throw new BibliotecaException(
-                    "No existe un préstamo activo para este usuario."
-            );
-        }
-
- 
-
-        usuario.registrarDevolucion(prestamoEncontrado);
-
-       
-
-        if (material instanceof Prestable) {
-
-            Prestable prestable = (Prestable) material;
-
-            prestable.devolver();
-        }
-
-   
-
-        if (material instanceof Reservable) {
-
-            Reservable reservable =
-                    (Reservable) material;
-
-            if (reservable.tieneReservasPendientes()) {
-
-                // Hay personas esperando.
-                // El material NO queda disponible para cualquiera.
-                material.cambiarEstado(Estado.RESERVADO);
-
-            } else {
-
-                // Nadie espera.
-                material.cambiarEstado(Estado.DISPONIBLE);
-            }
-        }
-    }
-
- 
-
-    public void reservarMaterial(
-            Usuario usuario,
-            MaterialBiblioteca material
-    ) throws BibliotecaException {
-
-        if (usuario == null || material == null) {
-            throw new BibliotecaException(
-                    "El usuario y el material son obligatorios."
-            );
-        }
-
-      
-
-        if (!(usuario instanceof UsuarioPremium)) {
-            throw new BibliotecaException(
-                    "Solo los usuarios premium pueden realizar reservas."
-            );
-        }
-
-    
-
-        if (!(material instanceof Reservable)) {
-            throw new BibliotecaException(
-                    "El material \"" + material.getTitulo()
-                    + "\" no permite reservas."
-            );
-        }
-
-       
-
-        if (material.getEstado() == Estado.DISPONIBLE) {
-            throw new BibliotecaException(
-                    "El material \"" + material.getTitulo()
-                    + "\" está disponible. No necesita reserva."
-            );
-        }
-
-        Reservable reservable =
-                (Reservable) material;
-
-        UsuarioPremium premium =
-                (UsuarioPremium) usuario;
-
-   
-
-        premium.reservarMaterial(reservable);
-
-        // Si estaba prestado, continúa reservado.
-        material.cambiarEstado(Estado.RESERVADO);
-    }
-
-
-
-    public void cancelarReserva(
-            Usuario usuario,
-            MaterialBiblioteca material
-    ) throws BibliotecaException {
-
-        if (usuario == null || material == null) {
-            throw new BibliotecaException(
-                    "El usuario y el material son obligatorios."
-            );
-        }
-
-        if (!(usuario instanceof UsuarioPremium)) {
-            throw new BibliotecaException(
-                    "Solo los usuarios premium pueden cancelar reservas."
-            );
-        }
-
-        if (!(material instanceof Reservable)) {
-            throw new BibliotecaException(
-                    "El material no permite reservas."
-            );
-        }
-
-        UsuarioPremium premium =
-                (UsuarioPremium) usuario;
-
-        Reservable reservable =
-                (Reservable) material;
-
-        premium.cancelarReservaMaterial(reservable);
-
-        // Si ya no quedan reservas y el material no está prestado,
-        // puede volver a estar disponible.
-        if (!reservable.tieneReservasPendientes()
-                && material.getEstado() != Estado.PRESTADO) {
-
-            material.cambiarEstado(Estado.DISPONIBLE);
-        }
-    }
-
-
-
-    public Usuario obtenerSiguienteUsuarioEnReserva(
-            MaterialBiblioteca material
-    ) throws BibliotecaException {
-
-        if (!(material instanceof Reservable)) {
-            throw new BibliotecaException(
-                    "El material no permite reservas."
-            );
-        }
-
-        Reservable reservable =
-                (Reservable) material;
-
-        return reservable.obtenerSiguienteReserva();
-    }
-
-
-
-    public MaterialBiblioteca buscarPorTituloOCodigo(
-            String dato
-    ) {
-
-        return buscarRecursivo(dato, 0);
-    }
-
-    private MaterialBiblioteca buscarRecursivo(
-            String dato,
-            int indice
-    ) {
-
-        // Caso base
-        if (indice >= materiales.size()) {
+    public Material buscarPorCodigo(String codigo) {
+        if (codigo == null) {
             return null;
         }
 
-        MaterialBiblioteca material =
-                materiales.get(indice);
-
-        // Buscar por título o código
-        if (material.getTitulo().equalsIgnoreCase(dato)
-                || material.getCodigo().equalsIgnoreCase(dato)) {
-
-            return material;
+        for (Material material : materiales) {
+            if (codigo.equalsIgnoreCase(material.getCodigo())) {
+                return material;
+            }
         }
 
-        // Recursividad
-        return buscarRecursivo(
-                dato,
-                indice + 1
+        return null;
+    }
+
+    public Usuario buscarUsuario(String codigo) {
+        if (codigo == null) {
+            return null;
+        }
+
+        for (Usuario usuario : usuarios) {
+            if (codigo.equalsIgnoreCase(usuario.getCodigo())) {
+                return usuario;
+            }
+        }
+
+        return null;
+    }
+
+    public Material buscarRecursivoPorCodigo(String codigo) {
+        if (codigo == null) {
+            return null;
+        }
+
+        return buscarCodigoRecursivo(codigo, 0);
+    }
+
+    private Material buscarCodigoRecursivo(String codigo, int posicion) {
+        if (posicion >= materiales.size()) {
+            return null;
+        }
+
+        Material actual = materiales.get(posicion);
+
+        if (codigo.equalsIgnoreCase(actual.getCodigo())) {
+            return actual;
+        }
+
+        return buscarCodigoRecursivo(codigo, posicion + 1);
+    }
+
+    public Material buscarRecursivoPorTitulo(String titulo) {
+        if (titulo == null) {
+            return null;
+        }
+
+        return buscarTituloRecursivo(titulo, 0);
+    }
+
+    private Material buscarTituloRecursivo(String titulo, int posicion) {
+        if (posicion >= materiales.size()) {
+            return null;
+        }
+
+        Material actual = materiales.get(posicion);
+
+        if (titulo.equalsIgnoreCase(actual.getTitulo())) {
+            return actual;
+        }
+
+        return buscarTituloRecursivo(titulo, posicion + 1);
+    }
+
+    @FunctionalInterface
+    public interface CriterioMaterial {
+        boolean cumple(Material material);
+    }
+
+    public List<Material> buscarRecursivo(CriterioMaterial criterio) {
+        List<Material> resultados = new ArrayList<>();
+
+        if (criterio == null) {
+            return resultados;
+        }
+
+        buscarRecursivo(criterio, 0, resultados);
+
+        return resultados;
+    }
+
+    private void buscarRecursivo(
+            CriterioMaterial criterio,
+            int posicion,
+            List<Material> resultados
+    ) {
+        if (posicion >= materiales.size()) {
+            return;
+        }
+
+        Material actual = materiales.get(posicion);
+
+        if (criterio.cumple(actual)) {
+            resultados.add(actual);
+        }
+
+        buscarRecursivo(
+                criterio,
+                posicion + 1,
+                resultados
         );
     }
 
- 
-
-    public List<MaterialBiblioteca> buscarPorCriterio(
+    public List<Material> buscarPorComplejidad(
             NivelComplejidad nivel
     ) {
-
-        ArrayList<MaterialBiblioteca> resultado =
-                new ArrayList<>();
-
-        buscarCriterioRecursivo(
-                nivel,
-                0,
-                resultado
+        return buscarRecursivo(
+                material -> material.getNivelComplejidad() == nivel
         );
+    }
+
+    public List<Material> buscarDisponibles() {
+        return buscarRecursivo(
+                this::estaDisponible
+        );
+    }
+
+    public List<Material> ordenarPorTitulo() {
+        List<Material> copia = new ArrayList<>(materiales);
+        copia.sort(Comparator.naturalOrder());
+        return copia;
+    }
+
+    public List<Material> ordenarPorComplejidad() {
+        List<Material> copia = new ArrayList<>(materiales);
+
+        copia.sort(
+                Comparator.comparing(
+                        Material::getNivelComplejidad,
+                        Comparator.nullsLast(
+                                Comparator.comparing(Enum::ordinal)
+                        )
+                )
+        );
+
+        return copia;
+    }
+
+    public <T extends Material> List<T> filtrarPorTipo(
+            Class<T> tipo
+    ) {
+        List<T> resultado = new ArrayList<>();
+
+        if (tipo == null) {
+            return resultado;
+        }
+
+        for (Material material : materiales) {
+            if (tipo.isInstance(material)) {
+                resultado.add(tipo.cast(material));
+            }
+        }
 
         return resultado;
     }
 
-    private void buscarCriterioRecursivo(
-            NivelComplejidad nivel,
-            int indice,
-            List<MaterialBiblioteca> resultado
+    public void prestarMaterial(
+            String codigoMaterial,
+            String codigoUsuario
     ) {
+        Material material = buscarPorCodigo(codigoMaterial);
+        Usuario usuario = buscarUsuario(codigoUsuario);
 
-        // Caso base
-        if (indice >= materiales.size()) {
-            return;
+        if (material == null) {
+            throw new BibliotecaException(
+                    "Material no encontrado."
+            );
         }
 
-        MaterialBiblioteca material =
-                materiales.get(indice);
-
-        if (material.getNivelComplejidad() == nivel) {
-            resultado.add(material);
+        if (usuario == null) {
+            throw new BibliotecaException(
+                    "Usuario no encontrado."
+            );
         }
 
-        buscarCriterioRecursivo(
-                nivel,
-                indice + 1,
-                resultado
+        if (!estaDisponible(material)) {
+            throw new MaterialPrestadoException(
+                    "El material esta prestado."
+            );
+        }
+
+        int prestamosUsuario = contarPrestamosUsuario(usuario);
+
+        if (prestamosUsuario >= LIMITE_PRESTAMOS) {
+            throw new LimitePrestamosException(
+                    "El usuario alcanzo el limite de "
+                    + LIMITE_PRESTAMOS
+                    + " prestamos."
+            );
+        }
+
+        int penalizacion = penalizaciones.getOrDefault(
+                usuario.getCodigo(),
+                0
         );
-    }
 
-  
+        if (penalizacion > 0) {
+            throw new BibliotecaException(
+                    "El usuario tiene una penalizacion vigente."
+            );
+        }
 
-    public void ordenarPorTitulo() {
-        Collections.sort(materiales);
-    }
+        if (!usuarioPuedePrestar(usuario, material)) {
+            throw new AutorizacionException(
+                    "El usuario no esta autorizado para "
+                    + "este nivel de complejidad."
+            );
+        }
 
-    
+        Deque<Usuario> cola = reservas.get(
+                material.getCodigo()
+        );
 
-    public void ordenarPorComplejidad() {
+        if (cola != null && !cola.isEmpty()) {
+            Usuario primero = cola.peek();
 
-        materiales.sort(
-                Comparator.comparingInt(
-                        m -> m.getNivelComplejidad()
-                                .getOrdenComplejidad()
+            if (!primero.getCodigo()
+                    .equalsIgnoreCase(usuario.getCodigo())) {
+
+                throw new BibliotecaException(
+                        "El material esta reservado para "
+                        + primero.getNombre()
+                );
+            }
+
+            cola.poll();
+        }
+
+        prestamosActuales.put(
+                material.getCodigo(),
+                usuario
+        );
+
+        cantidadPrestamos.put(
+                material.getCodigo(),
+                cantidadPrestamos.getOrDefault(
+                        material.getCodigo(),
+                        0
+                ) + 1
+        );
+
+        historial.add(
+                new RegistroPrestamo(
+                        material,
+                        usuario
                 )
         );
+
+        cambiarEstadoPrestado(material);
     }
 
-   
+    public void reservarMaterial(
+            String codigoMaterial,
+            String codigoUsuario
+    ) {
+        Material material = buscarPorCodigo(codigoMaterial);
+        Usuario usuario = buscarUsuario(codigoUsuario);
 
-    public <T extends MaterialBiblioteca>
-            List<T> obtenerPorTipo(Class<T> tipo) {
+        if (material == null) {
+            throw new BibliotecaException(
+                    "Material no encontrado."
+            );
+        }
 
-        ArrayList<T> resultado =
-                new ArrayList<>();
+        if (usuario == null) {
+            throw new BibliotecaException(
+                    "Usuario no encontrado."
+            );
+        }
 
-        for (MaterialBiblioteca material : materiales) {
+        if (estaDisponible(material)) {
+            throw new BibliotecaException(
+                    "El material esta disponible."
+            );
+        }
 
-            if (tipo.isInstance(material)) {
+        Deque<Usuario> cola = reservas.computeIfAbsent(
+                material.getCodigo(),
+                k -> new ArrayDeque<>()
+        );
 
-                resultado.add(
-                        tipo.cast(material)
+        for (Usuario reservado : cola) {
+            if (reservado.getCodigo()
+                    .equalsIgnoreCase(usuario.getCodigo())) {
+
+                throw new BibliotecaException(
+                        "El usuario ya esta en la cola de reservas."
                 );
             }
         }
 
-        return resultado;
+        cola.offer(usuario);
     }
 
-  
-
-    public List<Prestamo> obtenerHistorialPrestamos() {
-
-        return new ArrayList<>(prestamos);
-    }
-
-    
-
-    public MaterialBiblioteca obtenerMaterialMasSolicitado() {
-
-        if (prestamos.isEmpty()) {
-            return null;
-        }
-
-        MaterialBiblioteca resultado = null;
-        int mayorCantidad = 0;
-
-        for (MaterialBiblioteca material : materiales) {
-
-            int cantidad = 0;
-
-            for (Prestamo prestamo : prestamos) {
-
-                if (prestamo.getMaterial() == material) {
-                    cantidad++;
-                }
-            }
-
-            if (cantidad > mayorCantidad) {
-
-                mayorCantidad = cantidad;
-                resultado = material;
-            }
-        }
-
-        return resultado;
-    }
-
-
-
-    public int calcularPenalizacionUsuario(
-            Usuario usuario
+    public List<Usuario> obtenerReservas(
+            String codigoMaterial
     ) {
+        Deque<Usuario> cola = reservas.get(codigoMaterial);
+
+        if (cola == null) {
+            return new ArrayList<>();
+        }
+
+        return new ArrayList<>(cola);
+    }
+
+    public void devolverMaterial(
+            String codigoMaterial
+    ) {
+        Material material = buscarPorCodigo(codigoMaterial);
+
+        if (material == null) {
+            throw new BibliotecaException(
+                    "Material no encontrado."
+            );
+        }
+
+        Usuario usuario = prestamosActuales.remove(
+                material.getCodigo()
+        );
 
         if (usuario == null) {
-            return 0;
+            throw new BibliotecaException(
+                    "El material no se encuentra prestado."
+            );
         }
 
-        return usuario.calcularDiasPenalizacionAcumulada();
+        Deque<Usuario> cola = reservas.get(
+                material.getCodigo()
+        );
+
+        if (cola != null && !cola.isEmpty()) {
+            cambiarEstadoReservado(material);
+        } else {
+            cambiarEstadoDisponible(material);
+        }
     }
 
+    public void agregarPenalizacion(
+            String codigoUsuario,
+            int dias
+    ) {
+        if (dias <= 0) {
+            return;
+        }
 
+        Usuario usuario = buscarUsuario(codigoUsuario);
 
-    public ArrayList<MaterialBiblioteca> getMateriales() {
-        return materiales;
+        if (usuario == null) {
+            throw new BibliotecaException(
+                    "Usuario no encontrado."
+            );
+        }
+
+        int actual = penalizaciones.getOrDefault(
+                codigoUsuario,
+                0
+        );
+
+        penalizaciones.put(
+                codigoUsuario,
+                actual + dias
+        );
     }
 
-    public ArrayList<Usuario> getUsuarios() {
-        return usuarios;
+    public void reducirPenalizacion(
+            String codigoUsuario,
+            int dias
+    ) {
+        if (dias <= 0) {
+            return;
+        }
+
+        int actual = penalizaciones.getOrDefault(
+                codigoUsuario,
+                0
+        );
+
+        penalizaciones.put(
+                codigoUsuario,
+                Math.max(0, actual - dias)
+        );
     }
 
+    public int obtenerPenalizacion(
+            String codigoUsuario
+    ) {
+        return penalizaciones.getOrDefault(
+                codigoUsuario,
+                0
+        );
+    }
+
+    public List<RegistroPrestamo> obtenerHistorial() {
+        return new ArrayList<>(historial);
+    }
+
+    public List<Material> materialesMasSolicitados() {
+        List<Material> resultado =
+                new ArrayList<>(materiales);
+
+        resultado.sort(
+                Comparator.comparingInt(
+                        (Material material) ->
+                                cantidadPrestamos.getOrDefault(
+                                        material.getCodigo(),
+                                        0
+                                )
+                ).reversed()
+        );
+
+        return resultado;
+    }
+
+    public int obtenerCantidadPrestamos(
+            String codigoMaterial
+    ) {
+        return cantidadPrestamos.getOrDefault(
+                codigoMaterial,
+                0
+        );
+    }
+
+    private int contarPrestamosUsuario(
+            Usuario usuario
+    ) {
+        int contador = 0;
+
+        for (Usuario usuarioPrestamo :
+                prestamosActuales.values()) {
+
+            if (usuarioPrestamo.getCodigo()
+                    .equalsIgnoreCase(usuario.getCodigo())) {
+
+                contador++;
+            }
+        }
+
+        return contador;
+    }
+
+    private boolean estaDisponible(
+            Material material
+    ) {
+        return !prestamosActuales.containsKey(
+                material.getCodigo()
+        );
+    }
+
+    private boolean usuarioPuedePrestar(
+            Usuario usuario,
+            Material material
+    ) {
+        return true;
+    }
+
+    private void cambiarEstadoPrestado(
+            Material material
+    ) {
+        material.setEstado(
+                EstadoMaterial.PRESTADO
+        );
+    }
+
+    private void cambiarEstadoDisponible(
+            Material material
+    ) {
+        material.setEstado(
+                EstadoMaterial.DISPONIBLE
+        );
+    }
+
+    private void cambiarEstadoReservado(
+            Material material
+    ) {
+        material.setEstado(
+                EstadoMaterial.RESERVADO
+        );
+    }
+
+    public static class RegistroPrestamo {
+
+        private final Material material;
+        private final Usuario usuario;
+
+        public RegistroPrestamo(
+                Material material,
+                Usuario usuario
+        ) {
+            this.material = material;
+            this.usuario = usuario;
+        }
+
+        public Material getMaterial() {
+            return material;
+        }
+
+        public Usuario getUsuario() {
+            return usuario;
+        }
+
+        @Override
+        public String toString() {
+            return "Prestamo{"
+                    + "material="
+                    + material.getTitulo()
+                    + ", usuario="
+                    + usuario.getNombre()
+                    + '}';
+        }
+    }
+
+    public List<Material> getMateriales() {
+        return new ArrayList<>(materiales);
+    }
+
+    public List<Usuario> getUsuarios() {
+        return new ArrayList<>(usuarios);
+    }
+}
     public ArrayList<Prestamo> getPrestamos() {
         return prestamos;
     }
