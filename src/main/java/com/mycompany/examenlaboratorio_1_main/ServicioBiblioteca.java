@@ -485,7 +485,7 @@ public class ServicioBiblioteca {
         }
 
         return usuario.calcularDiasPenalizacionAcumulada();
-    }
+    } 
 
 
 
