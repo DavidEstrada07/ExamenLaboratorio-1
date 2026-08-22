@@ -9,17 +9,13 @@ import java.util.List;
 
 public class ServicioBiblioteca {
 
-    // =========================================================
-    // COLECCIONES PRINCIPALES
-    // =========================================================
+   
 
     private ArrayList<MaterialBiblioteca> materiales;
     private ArrayList<Usuario> usuarios;
     private ArrayList<Prestamo> prestamos;
 
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
+    
 
     public ServicioBiblioteca() {
         materiales = new ArrayList<>();
@@ -27,9 +23,7 @@ public class ServicioBiblioteca {
         prestamos = new ArrayList<>();
     }
 
-    // =========================================================
-    // PUNTO 10 - ALTA DE MATERIALES
-    // =========================================================
+    
 
     public void agregarMaterial(MaterialBiblioteca material) {
         if (material == null) {
@@ -39,9 +33,7 @@ public class ServicioBiblioteca {
         materiales.add(material);
     }
 
-    // =========================================================
-    // PUNTO 10 - ALTA DE USUARIOS
-    // =========================================================
+    
 
     public void agregarUsuario(Usuario usuario) {
         if (usuario == null) {
@@ -51,9 +43,7 @@ public class ServicioBiblioteca {
         usuarios.add(usuario);
     }
 
-    // =========================================================
-    // PUNTO 10 - REALIZAR PRÉSTAMO
-    // =========================================================
+    
 
     public Prestamo prestarMaterial(
             Usuario usuario,
@@ -72,9 +62,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Comprobar penalización
-        // -----------------------------------------------------
+      
 
         if (usuario.estaPenalizado()) {
             throw new BibliotecaException(
@@ -84,9 +72,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Comprobar límite de préstamos
-        // -----------------------------------------------------
+       
 
         if (usuario.getMaterialesPrestados().size()
                 >= usuario.getLimitePrestamos()) {
@@ -97,9 +83,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Comprobar autorización por nivel de complejidad
-        // -----------------------------------------------------
+       
 
         if (material.getNivelComplejidad().requiereAutorizacion()
                 && !usuario.tieneAutorizacionEspecial()) {
@@ -110,9 +94,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Comprobar que sea prestable
-        // -----------------------------------------------------
+       
 
         if (!(material instanceof Prestable)) {
             throw new BibliotecaException(
@@ -123,9 +105,7 @@ public class ServicioBiblioteca {
 
         Prestable prestable = (Prestable) material;
 
-        // -----------------------------------------------------
-        // Comprobar disponibilidad
-        // -----------------------------------------------------
+        
 
         if (!prestable.estaDisponible()) {
             throw new MaterialYaPrestadoException(
@@ -133,9 +113,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Realizar préstamo
-        // -----------------------------------------------------
+        
 
         prestable.prestar(usuario);
 
@@ -159,9 +137,6 @@ public class ServicioBiblioteca {
         return prestamo;
     }
 
-    // =========================================================
-    // PUNTO 10 - DEVOLVER MATERIAL
-    // =========================================================
 
     public void devolverMaterial(
             Usuario usuario,
@@ -174,9 +149,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Buscar préstamo activo
-        // -----------------------------------------------------
+    
 
         Prestamo prestamoEncontrado = null;
 
@@ -197,15 +170,11 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Registrar devolución
-        // -----------------------------------------------------
+ 
 
         usuario.registrarDevolucion(prestamoEncontrado);
 
-        // -----------------------------------------------------
-        // Marcar material como devuelto
-        // -----------------------------------------------------
+       
 
         if (material instanceof Prestable) {
 
@@ -214,9 +183,7 @@ public class ServicioBiblioteca {
             prestable.devolver();
         }
 
-        // =====================================================
-        // PUNTO 11 - COMPROBAR RESERVAS
-        // =====================================================
+   
 
         if (material instanceof Reservable) {
 
@@ -237,9 +204,7 @@ public class ServicioBiblioteca {
         }
     }
 
-    // =========================================================
-    // PUNTO 11 - RESERVAR MATERIAL
-    // =========================================================
+ 
 
     public void reservarMaterial(
             Usuario usuario,
@@ -252,9 +217,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Solo Premium puede reservar
-        // -----------------------------------------------------
+      
 
         if (!(usuario instanceof UsuarioPremium)) {
             throw new BibliotecaException(
@@ -262,9 +225,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Comprobar que el material sea reservable
-        // -----------------------------------------------------
+    
 
         if (!(material instanceof Reservable)) {
             throw new BibliotecaException(
@@ -273,9 +234,7 @@ public class ServicioBiblioteca {
             );
         }
 
-        // -----------------------------------------------------
-        // Solo se reserva si ya está prestado
-        // -----------------------------------------------------
+       
 
         if (material.getEstado() == Estado.DISPONIBLE) {
             throw new BibliotecaException(
@@ -290,9 +249,7 @@ public class ServicioBiblioteca {
         UsuarioPremium premium =
                 (UsuarioPremium) usuario;
 
-        // -----------------------------------------------------
-        // Agregar a cola de reservas
-        // -----------------------------------------------------
+   
 
         premium.reservarMaterial(reservable);
 
@@ -300,9 +257,7 @@ public class ServicioBiblioteca {
         material.cambiarEstado(Estado.RESERVADO);
     }
 
-    // =========================================================
-    // PUNTO 11 - CANCELAR RESERVA
-    // =========================================================
+
 
     public void cancelarReserva(
             Usuario usuario,
@@ -344,9 +299,7 @@ public class ServicioBiblioteca {
         }
     }
 
-    // =========================================================
-    // PUNTO 11 - OBTENER SIGUIENTE RESERVA
-    // =========================================================
+
 
     public Usuario obtenerSiguienteUsuarioEnReserva(
             MaterialBiblioteca material
@@ -364,9 +317,7 @@ public class ServicioBiblioteca {
         return reservable.obtenerSiguienteReserva();
     }
 
-    // =========================================================
-    // PUNTO 10 - BÚSQUEDA EXACTA RECURSIVA
-    // =========================================================
+
 
     public MaterialBiblioteca buscarPorTituloOCodigo(
             String dato
@@ -402,9 +353,7 @@ public class ServicioBiblioteca {
         );
     }
 
-    // =========================================================
-    // PUNTO 10 - BÚSQUEDA POR CRITERIO RECURSIVA
-    // =========================================================
+ 
 
     public List<MaterialBiblioteca> buscarPorCriterio(
             NivelComplejidad nivel
@@ -447,17 +396,13 @@ public class ServicioBiblioteca {
         );
     }
 
-    // =========================================================
-    // PUNTO 10 - ORDEN NATURAL POR TÍTULO
-    // =========================================================
+  
 
     public void ordenarPorTitulo() {
         Collections.sort(materiales);
     }
 
-    // =========================================================
-    // PUNTO 10 - ORDEN POR COMPLEJIDAD
-    // =========================================================
+    
 
     public void ordenarPorComplejidad() {
 
@@ -469,9 +414,7 @@ public class ServicioBiblioteca {
         );
     }
 
-    // =========================================================
-    // PUNTO 10 - MÉTODO GENÉRICO
-    // =========================================================
+   
 
     public <T extends MaterialBiblioteca>
             List<T> obtenerPorTipo(Class<T> tipo) {
@@ -492,18 +435,14 @@ public class ServicioBiblioteca {
         return resultado;
     }
 
-    // =========================================================
-    // PUNTO 10 - HISTORIAL GENERAL
-    // =========================================================
+  
 
     public List<Prestamo> obtenerHistorialPrestamos() {
 
         return new ArrayList<>(prestamos);
     }
 
-    // =========================================================
-    // PUNTO 10 - MATERIAL MÁS SOLICITADO
-    // =========================================================
+    
 
     public MaterialBiblioteca obtenerMaterialMasSolicitado() {
 
@@ -535,9 +474,7 @@ public class ServicioBiblioteca {
         return resultado;
     }
 
-    // =========================================================
-    // PUNTO 10 - PENALIZACIÓN ACUMULADA
-    // =========================================================
+
 
     public int calcularPenalizacionUsuario(
             Usuario usuario
@@ -550,9 +487,7 @@ public class ServicioBiblioteca {
         return usuario.calcularDiasPenalizacionAcumulada();
     }
 
-    // =========================================================
-    // GETTERS
-    // =========================================================
+
 
     public ArrayList<MaterialBiblioteca> getMateriales() {
         return materiales;
